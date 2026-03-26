@@ -446,7 +446,7 @@ bool Internal::SetupBNM() {
     auto objectClass = Class(BNM_OBFUSCATE_TMP("System"), BNM_OBFUSCATE_TMP("Object"), mscorlib);
     if (!objectClass._data) {
         BNM_LOG_ERR("BNM: Failed to find System.Object. CRITICAL ERROR.");
-        return;
+        return false;
     }
     for (uint16_t slot = 0; slot < objectClass._data->vtable_count; slot++) {
         const BNM::IL2CPP::MethodInfo* vMethod = objectClass._data->vtable[slot].method;
@@ -469,7 +469,7 @@ bool Internal::SetupBNM() {
     auto listClass = vmData.System$$List = Class(BNM_OBFUSCATE_TMP("System.Collections.Generic"), BNM_OBFUSCATE_TMP("List`1"));
     if (!listClass._data) {
         BNM_LOG_ERR("BNM: Failed to find System.Collections.Generic.List`1. Modding might be limited.");
-        return;
+        return true;
     }
     auto cls = listClass._data;
     auto size = sizeof(IL2CPP::Il2CppClass) + cls->vtable_count * sizeof(IL2CPP::VirtualInvokeData);
