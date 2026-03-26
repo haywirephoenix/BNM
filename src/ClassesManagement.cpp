@@ -12,6 +12,10 @@
 using namespace BNM;
 
 void MANAGEMENT_STRUCTURES::AddClass(CustomClass *_class) {
+    // FIXME: Add synchronization for multi-threaded class registration
+#ifdef BNM_ALLOW_MULTI_THREADING_SYNC
+    std::unique_lock lock(Internal::ClassesManagement::classesFindAccessMutex);
+#endif
     if (!Internal::ClassesManagement::classesManagementVector)
         Internal::ClassesManagement::classesManagementVector = new (BNM_malloc(sizeof(std::vector<MANAGEMENT_STRUCTURES::CustomClass *>))) std::vector<MANAGEMENT_STRUCTURES::CustomClass *>();
 
@@ -59,7 +63,8 @@ void Internal::ClassesManagement::ProcessCustomClasses() {
 
     for (auto customClass : *classesManagementVector) BNM::ClassesManagement::ProcessClassRuntime(customClass);
 
-    classesManagementVector->clear(); classesManagementVector->shrink_to_fit();
+    // FIXME: Explicitly call destructor for std::vector when using placement new
+    classesManagementVector->~vector();
     BNM_free((void *) classesManagementVector);
     classesManagementVector = nullptr;
 }
@@ -164,11 +169,8 @@ static void ModifyClass(MANAGEMENT_STRUCTURES::CustomClass *customClass, Class t
             BNM_LOG_DEBUG(DBG_BNM_MSG_ClassesManagement_ModifyClasses_Added_Field, field->_name.data());
         }
 
-        if ((klass->flags & BNM_CLASS_ALLOCATED_FIELDS_FLAG) == BNM_CLASS_ALLOCATED_FIELDS_FLAG) BNM_free(klass->fields);
-        klass->flags |= BNM_CLASS_ALLOCATED_FIELDS_FLAG;
-
-        klass->actualSize = currentAddress;
-        klass->fields = newField;
+        // FIXME: klass->fields should point to the start of the new array (newFields), not the incremented pointer (newField)
+        klass->fields = newFields;
     }
 
     customClass->myClass = klass;
