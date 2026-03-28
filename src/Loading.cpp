@@ -98,20 +98,46 @@ bool Loading::TryLoadByJNI(JNIEnv *env, jobject context) {
 
     if (context == nullptr) {
         jclass activityThread = env->FindClass(BNM_OBFUSCATE_TMP("android/app/ActivityThread"));
-        auto currentActivityThread = env->CallStaticObjectMethod(activityThread, env->GetStaticMethodID(activityThread, BNM_OBFUSCATE_TMP("currentActivityThread"), BNM_OBFUSCATE_TMP("()Landroid/app/ActivityThread;")));
-        context = env->CallObjectMethod(currentActivityThread, env->GetMethodID(activityThread, BNM_OBFUSCATE_TMP("getApplication"), BNM_OBFUSCATE_TMP("()Landroid/app/Application;")));
+        if (env->ExceptionCheck() || !activityThread) { env->ExceptionClear(); return false; }
+
+        jmethodID currentActivityThreadMethod = env->GetStaticMethodID(activityThread, BNM_OBFUSCATE_TMP("currentActivityThread"), BNM_OBFUSCATE_TMP("()Landroid/app/ActivityThread;"));
+        if (env->ExceptionCheck() || !currentActivityThreadMethod) { env->ExceptionClear(); return false; }
+
+        auto currentActivityThread = env->CallStaticObjectMethod(activityThread, currentActivityThreadMethod);
+        if (env->ExceptionCheck() || !currentActivityThread) { env->ExceptionClear(); return false; }
+
+        jmethodID getApplicationMethod = env->GetMethodID(activityThread, BNM_OBFUSCATE_TMP("getApplication"), BNM_OBFUSCATE_TMP("()Landroid/app/Application;"));
+        if (env->ExceptionCheck() || !getApplicationMethod) { env->ExceptionClear(); env->DeleteLocalRef(currentActivityThread); return false; }
+
+        context = env->CallObjectMethod(currentActivityThread, getApplicationMethod);
         env->DeleteLocalRef(currentActivityThread);
+        if (env->ExceptionCheck() || !context) { env->ExceptionClear(); return false; }
     }
 
-    auto applicationInfo = env->CallObjectMethod(context, env->GetMethodID(env->GetObjectClass(context), BNM_OBFUSCATE_TMP("getApplicationInfo"), BNM_OBFUSCATE_TMP("()Landroid/content/pm/ApplicationInfo;")));
-    auto applicationInfoClass = env->GetObjectClass(applicationInfo);
+    jclass contextClass = env->GetObjectClass(context);
+    jmethodID getApplicationInfoMethod = env->GetMethodID(contextClass, BNM_OBFUSCATE_TMP("getApplicationInfo"), BNM_OBFUSCATE_TMP("()Landroid/content/pm/ApplicationInfo;"));
+    if (env->ExceptionCheck() || !getApplicationInfoMethod) { env->ExceptionClear(); env->DeleteLocalRef(contextClass); return false; }
 
-    auto flags = env->GetIntField(applicationInfo, env->GetFieldID(applicationInfoClass, BNM_OBFUSCATE_TMP("flags"), BNM_OBFUSCATE_TMP("I")));
+    auto applicationInfo = env->CallObjectMethod(context, getApplicationInfoMethod);
+    env->DeleteLocalRef(contextClass);
+    if (env->ExceptionCheck() || !applicationInfo) { env->ExceptionClear(); return false; }
+
+    auto applicationInfoClass = env->GetObjectClass(applicationInfo);
+    jfieldID flagsField = env->GetFieldID(applicationInfoClass, BNM_OBFUSCATE_TMP("flags"), BNM_OBFUSCATE_TMP("I"));
+    if (env->ExceptionCheck() || !flagsField) { env->ExceptionClear(); env->DeleteLocalRef(applicationInfo); env->DeleteLocalRef(applicationInfoClass); return false; }
+
+    auto flags = env->GetIntField(applicationInfo, flagsField);
     bool isLibrariesExtracted = (flags & 0x10000000) == 0x10000000; // ApplicationInfo.FLAG_EXTRACT_NATIVE_LIBS
 
-    auto jDir = (jstring) env->GetObjectField(applicationInfo, env->GetFieldID(applicationInfoClass, isLibrariesExtracted ? BNM_OBFUSCATE_TMP("nativeLibraryDir") : BNM_OBFUSCATE_TMP("sourceDir"), BNM_OBFUSCATE_TMP("Ljava/lang/String;")));
+    jfieldID dirField = env->GetFieldID(applicationInfoClass, isLibrariesExtracted ? BNM_OBFUSCATE_TMP("nativeLibraryDir") : BNM_OBFUSCATE_TMP("sourceDir"), BNM_OBFUSCATE_TMP("Ljava/lang/String;"));
+    if (env->ExceptionCheck() || !dirField) { env->ExceptionClear(); env->DeleteLocalRef(applicationInfo); env->DeleteLocalRef(applicationInfoClass); return false; }
 
-    auto cDir = std::string_view(env->GetStringUTFChars(jDir, nullptr));
+    auto jDir = (jstring) env->GetObjectField(applicationInfo, dirField);
+    if (env->ExceptionCheck() || !jDir) { env->ExceptionClear(); env->DeleteLocalRef(applicationInfo); env->DeleteLocalRef(applicationInfoClass); return false; }
+
+    auto cDirChars = env->GetStringUTFChars(jDir, nullptr);
+    if (!cDirChars) { env->DeleteLocalRef(applicationInfo); env->DeleteLocalRef(applicationInfoClass); env->DeleteLocalRef(jDir); return false; }
+    auto cDir = std::string_view(cDirChars);
     env->DeleteLocalRef(applicationInfo); env->DeleteLocalRef(applicationInfoClass);
 
     // isLibrariesExtracted = true:   Full path to library /data/app/.../package name-.../lib/architecture/libil2cpp.so
@@ -132,7 +158,7 @@ bool Loading::TryLoadByJNI(JNIEnv *env, jobject context) {
     if (!(result = CheckHandle(handle))) BNM_LOG_ERR(DBG_BNM_MSG_TryLoadByJNI_Fail);
 
     FINISH:
-    env->ReleaseStringUTFChars(jDir, cDir.data()); env->DeleteLocalRef(jDir);
+    env->ReleaseStringUTFChars(jDir, cDirChars); env->DeleteLocalRef(jDir);
     return result;
 }
 

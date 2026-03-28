@@ -52,8 +52,11 @@ std::vector<BNM::Class> BNM::Image::GetClasses(bool includeInner) const {
     });
 #endif
 
-    // A clever way to make a copy with the desired type without for, because BNM::Class is BNM::IL2CPP::Il2CppClass *.
-    return *(std::vector<BNM::Class> *) &classes;
+    // Correctly construct the return vector to avoid undefined behavior from type punning.
+    std::vector<BNM::Class> ret;
+    ret.reserve(classes.size());
+    for (auto cls : classes) ret.emplace_back(cls);
+    return ret;
 }
 
 std::vector<BNM::Image> BNM::Image::GetImages() {
