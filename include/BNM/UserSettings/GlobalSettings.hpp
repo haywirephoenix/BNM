@@ -145,6 +145,8 @@ inline void Unhook(PTR_T ptr) {
 
 
 // Dummy
+/*
+
 #include <cassert>
 
 static_assert(false, "No hooking software!");
@@ -165,6 +167,8 @@ template<typename PTR_T>
 inline void Unhook(PTR_T ptr) {
     if ((void *) ptr != nullptr) ((void)0);
 }
+
+*/
 
 #include <dlfcn.h>
 
