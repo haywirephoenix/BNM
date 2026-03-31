@@ -123,7 +123,7 @@ inline void Unhook(PTR_T ptr) {
 
 
 // Dobby
-/*
+
 #include <dobby.h>
 
 template<typename PTR_T, typename NEW_T, typename T_OLD>
@@ -142,7 +142,7 @@ template<typename PTR_T>
 inline void Unhook(PTR_T ptr) {
     if ((void *) ptr != nullptr) DobbyDestroy((void *)ptr);
 }
-*/
+
 
 // Dummy
 #include <cassert>
