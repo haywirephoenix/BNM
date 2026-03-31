@@ -39,6 +39,8 @@ namespace BNM {
 #include "Il2CppHeaders/2022.2.h"
 #elif UNITY_VER >= 231
 #include "Il2CppHeaders/2023.1.h"
+#elif UNITY_VER >= 6000
+#include "Il2CppHeaders/6000.1.7f1.h"
 #else
 #include "Il2CppHeaders/2023.1.h"
 static_assert(false, "Setup UNITY_VER in GlobalSettings.hpp");
